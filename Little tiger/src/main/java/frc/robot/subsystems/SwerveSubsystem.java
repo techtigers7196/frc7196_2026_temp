@@ -25,6 +25,10 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.networktables.NetworkTableEntry;
+import java.io.PrintWriter;
+import java.io.FileWriter;
 
 
 
@@ -32,6 +36,22 @@ public class SwerveSubsystem extends SubsystemBase
 {
     double maximumSpeed = Units.feetToMeters(7);
     SwerveDrive swerveDrive;
+  // Telemetry entries for Shuffleboard
+  private NetworkTableEntry setpointVxEntry;
+  private NetworkTableEntry measVxEntry;
+  private NetworkTableEntry errVxEntry;
+  private NetworkTableEntry setpointVyEntry;
+  private NetworkTableEntry measVyEntry;
+  private NetworkTableEntry errVyEntry;
+  private NetworkTableEntry setpointOmegaEntry;
+  private NetworkTableEntry measOmegaEntry;
+  private NetworkTableEntry errOmegaEntry;
+
+  private java.io.File logFile;
+  private PrintWriter fileLogger;
+
+  // Last commanded chassis speeds (setpoint) to visualize against measured velocity
+  private ChassisSpeeds lastSetpoint = new ChassisSpeeds(0.0, 0.0, 0.0);
 
     public SwerveSubsystem()
     {
@@ -71,7 +91,78 @@ public class SwerveSubsystem extends SubsystemBase
             {
               e.printStackTrace();
             }
+            var pidTab = Shuffleboard.getTab("PID");
+            setpointVxEntry = pidTab.add("Setpoint Vx (m/s)", 0.0).getEntry();
+            measVxEntry = pidTab.add("Measured Vx (m/s)", 0.0).getEntry();
+            errVxEntry = pidTab.add("Error Vx (m/s)", 0.0).getEntry();
+            setpointVyEntry = pidTab.add("Setpoint Vy (m/s)", 0.0).getEntry();
+            measVyEntry = pidTab.add("Measured Vy (m/s)", 0.0).getEntry();
+            errVyEntry = pidTab.add("Error Vy (m/s)", 0.0).getEntry();
+            setpointOmegaEntry = pidTab.add("Setpoint Omega (rad/s)", 0.0).getEntry();
+            measOmegaEntry = pidTab.add("Measured Omega (rad/s)", 0.0).getEntry();
+            errOmegaEntry = pidTab.add("Error Omega (rad/s)", 0.0).getEntry();
+
+            // Initialize CSV file logger (appends to file in working directory)
+            try {
+              logFile = new File("swerve_pose_log.csv");
+              boolean writeHeader = !logFile.exists() || logFile.length() == 0;
+              fileLogger = new PrintWriter(new FileWriter(logFile, true), true);
+              if (writeHeader) {
+                fileLogger.println("timestamp,poseX,poseY,rotDeg,velVx,velVy,velOmega,setpointVx,measVx,errVx,setpointVy,measVy,errVy,setpointOmega,measOmega,errOmega");
+              }
+            } catch (IOException e) {
+              e.printStackTrace();
+              fileLogger = null;
             }
+          }
+
+    @Override
+    public void periodic() {
+      // Publish setpoint and measured velocities for real-time graphing
+      var measured = getRobotVelocity();
+
+      // setpoint values
+      if (setpointVxEntry != null) setpointVxEntry.setDouble(lastSetpoint.vxMetersPerSecond);
+      if (setpointVyEntry != null) setpointVyEntry.setDouble(lastSetpoint.vyMetersPerSecond);
+      if (setpointOmegaEntry != null) setpointOmegaEntry.setDouble(lastSetpoint.omegaRadiansPerSecond);
+
+      // measured values
+      if (measVxEntry != null) measVxEntry.setDouble(measured.vxMetersPerSecond);
+      if (measVyEntry != null) measVyEntry.setDouble(measured.vyMetersPerSecond);
+      if (measOmegaEntry != null) measOmegaEntry.setDouble(measured.omegaRadiansPerSecond);
+
+      // errors
+      if (errVxEntry != null) errVxEntry.setDouble(lastSetpoint.vxMetersPerSecond - measured.vxMetersPerSecond);
+      if (errVyEntry != null) errVyEntry.setDouble(lastSetpoint.vyMetersPerSecond - measured.vyMetersPerSecond);
+      if (errOmegaEntry != null) errOmegaEntry.setDouble(lastSetpoint.omegaRadiansPerSecond - measured.omegaRadiansPerSecond);
+
+      // optional CSV logging
+      if (fileLogger != null) {
+        long ts = System.currentTimeMillis();
+        fileLogger.printf("%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+            ts,
+            getPose().getX(),
+            getPose().getY(),
+            getPose().getRotation().getDegrees(),
+            measured.vxMetersPerSecond,
+            measured.vyMetersPerSecond,
+            measured.omegaRadiansPerSecond,
+            lastSetpoint.vxMetersPerSecond,
+            measured.vxMetersPerSecond,
+            lastSetpoint.vxMetersPerSecond - measured.vxMetersPerSecond,
+            lastSetpoint.vyMetersPerSecond,
+            measured.vyMetersPerSecond,
+            lastSetpoint.vyMetersPerSecond - measured.vyMetersPerSecond,
+            lastSetpoint.omegaRadiansPerSecond,
+            measured.omegaRadiansPerSecond,
+            lastSetpoint.omegaRadiansPerSecond - measured.omegaRadiansPerSecond
+        );
+      }
+    }
+
+    /**
+     * @return The current pose of the robot.
+     */
 
     public Pose2d getPose()
     {
@@ -88,7 +179,9 @@ public class SwerveSubsystem extends SubsystemBase
 
     public void driveFieldOriented(ChassisSpeeds velocity)
     {
-        swerveDrive.driveFieldOriented(velocity);
+      // store the commanded setpoint so we can visualize it against measured velocity
+      lastSetpoint = velocity;
+      swerveDrive.driveFieldOriented(velocity);
     }
 
       /**
@@ -137,6 +230,7 @@ public class SwerveSubsystem extends SubsystemBase
     });
   }
 
+  
   public Command alignToTag(VisionSubsystem vision)
   {
 
