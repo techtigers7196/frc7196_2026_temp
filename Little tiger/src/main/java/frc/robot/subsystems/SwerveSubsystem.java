@@ -46,6 +46,9 @@ public class SwerveSubsystem extends SubsystemBase
   private NetworkTableEntry setpointOmegaEntry;
   private NetworkTableEntry measOmegaEntry;
   private NetworkTableEntry errOmegaEntry;
+  private NetworkTableEntry poseXEntry;
+  private NetworkTableEntry poseYEntry;
+  private NetworkTableEntry poseRotEntry;
 
   private java.io.File logFile;
   private PrintWriter fileLogger;
@@ -72,6 +75,7 @@ public class SwerveSubsystem extends SubsystemBase
           config = RobotConfig.fromGUISettings();
         
 
+        
         AutoBuilder.configure(
           this::getPose,
           this::resetOdometry,
@@ -101,6 +105,9 @@ public class SwerveSubsystem extends SubsystemBase
             setpointOmegaEntry = pidTab.add("Setpoint Omega (rad/s)", 0.0).getEntry();
             measOmegaEntry = pidTab.add("Measured Omega (rad/s)", 0.0).getEntry();
             errOmegaEntry = pidTab.add("Error Omega (rad/s)", 0.0).getEntry();
+            poseXEntry = pidTab.add("Pose X (m)", 0.0).getEntry();
+            poseYEntry = pidTab.add("Pose Y (m)", 0.0).getEntry();
+            poseRotEntry = pidTab.add("Pose Rot (deg)", 0.0).getEntry();
 
             // Initialize CSV file logger (appends to file in working directory)
             try {
@@ -158,6 +165,12 @@ public class SwerveSubsystem extends SubsystemBase
             lastSetpoint.omegaRadiansPerSecond - measured.omegaRadiansPerSecond
         );
       }
+
+      // publish current odometry pose to Shuffleboard
+      var pose = getPose();
+      if (poseXEntry != null) poseXEntry.setDouble(pose.getX());
+      if (poseYEntry != null) poseYEntry.setDouble(pose.getY());
+      if (poseRotEntry != null) poseRotEntry.setDouble(pose.getRotation().getDegrees());
     }
 
     /**
