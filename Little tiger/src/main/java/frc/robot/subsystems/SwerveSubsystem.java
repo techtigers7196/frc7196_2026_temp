@@ -6,6 +6,12 @@ import java.util.function.Consumer;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.config.PIDConstants;
+import com.pathplanner.lib.config.RobotConfig;
+import com.pathplanner.lib.controllers.PPHolonomicDriveController;
+
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -15,6 +21,7 @@ import swervelib.telemetry.SwerveDriveTelemetry;
 import swervelib.telemetry.SwerveDriveTelemetry.TelemetryVerbosity;
 import swervelib.SwerveDrive;
 import swervelib.math.SwerveMath;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
@@ -23,7 +30,7 @@ import edu.wpi.first.math.util.Units;
 
 public class SwerveSubsystem extends SubsystemBase 
 {
-    double maximumSpeed = Units.feetToMeters(4.5);
+    double maximumSpeed = Units.feetToMeters(7);
     SwerveDrive swerveDrive;
 
     public SwerveSubsystem()
@@ -39,6 +46,44 @@ public class SwerveSubsystem extends SubsystemBase
         }
         
         SwerveDriveTelemetry.verbosity = TelemetryVerbosity.HIGH;
+
+        RobotConfig config;
+        try{
+          config = RobotConfig.fromGUISettings();
+        
+
+        AutoBuilder.configure(
+          this::getPose,
+          this::resetOdometry,
+          this::getRobotVelocity,
+          (speeds, feedforwards) -> swerveDrive.setChassisSpeeds(speeds),
+          new PPHolonomicDriveController(
+          new PIDConstants(1, 0, 0),
+          new PIDConstants(5, 0, 0)),
+          config,
+          () -> {
+              var alliance = DriverStation.getAlliance();
+              if (alliance.isPresent()) {
+                return alliance.get() == DriverStation.Alliance.Red;
+              }
+              return false;},
+            this);} catch (Exception e)
+            {
+              e.printStackTrace();
+            }
+            }
+
+    public Pose2d getPose()
+    {
+      return swerveDrive.getPose();
+    }
+    public ChassisSpeeds getRobotVelocity()
+    {
+      return swerveDrive.getRobotVelocity();
+    }
+    public void resetOdometry(Pose2d initialHolomicPose)
+    {
+      swerveDrive.resetOdometry(initialHolomicPose);
     }
 
     public void driveFieldOriented(ChassisSpeeds velocity)
@@ -61,7 +106,7 @@ public class SwerveSubsystem extends SubsystemBase
     return run(() -> {
 
       Translation2d scaledInputs = SwerveMath.scaleTranslation(new Translation2d(translationX.getAsDouble(),
-                                                                                 translationY.getAsDouble()), 0.8);
+                                                                                 translationY.getAsDouble()), 1);
 
       // Make the robot move
       driveFieldOriented(swerveDrive.swerveController.getTargetSpeeds(scaledInputs.getX(), scaledInputs.getY(),

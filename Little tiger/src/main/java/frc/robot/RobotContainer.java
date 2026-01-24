@@ -4,6 +4,10 @@
 
 package frc.robot;
 
+import com.pathplanner.lib.auto.AutoBuilder;
+
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
@@ -20,6 +24,8 @@ public class RobotContainer {
   final CommandXboxController driverXbox = new CommandXboxController(0);
   final CommandXboxController supportXbox = new CommandXboxController(1);
 
+  private final SendableChooser<Command> autoChooser;
+
   SwerveInputStream driveAngularVelocity = SwerveInputStream.of(drivebase.getSwerveDrive(),
                                                               () -> driverXbox.getLeftY()*-1,
                                                               () -> driverXbox.getLeftX()*-1)
@@ -31,6 +37,9 @@ public class RobotContainer {
 Command driveFielOrientedAngularVelocity = drivebase.driveFieldOrientedCommand(driveAngularVelocity);
   public RobotContainer() {
     configureBindings();
+
+    autoChooser = AutoBuilder.buildAutoChooser();
+    SmartDashboard.putData("AutoChooser", autoChooser);
   }
 
   private void configureBindings() {
@@ -43,6 +52,6 @@ Command driveFielOrientedAngularVelocity = drivebase.driveFieldOrientedCommand(d
   }
 
   public Command getAutonomousCommand() {
-    return Commands.print("No autonomous command configured");
+    return autoChooser.getSelected();
   }
 }
