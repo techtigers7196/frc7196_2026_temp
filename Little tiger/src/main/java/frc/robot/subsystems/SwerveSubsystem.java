@@ -26,6 +26,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import java.io.PrintWriter;
 import java.io.FileWriter;
@@ -37,15 +38,15 @@ public class SwerveSubsystem extends SubsystemBase
     double maximumSpeed = Units.feetToMeters(7);
     SwerveDrive swerveDrive;
   // Telemetry entries for Shuffleboard
-  private NetworkTableEntry setpointVxEntry;
-  private NetworkTableEntry measVxEntry;
-  private NetworkTableEntry errVxEntry;
-  private NetworkTableEntry setpointVyEntry;
-  private NetworkTableEntry measVyEntry;
-  private NetworkTableEntry errVyEntry;
-  private NetworkTableEntry setpointOmegaEntry;
-  private NetworkTableEntry measOmegaEntry;
-  private NetworkTableEntry errOmegaEntry;
+  private GenericEntry setpointVxEntry;
+  private GenericEntry measVxEntry;
+  private GenericEntry errVxEntry;
+  private GenericEntry setpointVyEntry;
+  private GenericEntry measVyEntry;
+  private GenericEntry errVyEntry;
+  private GenericEntry setpointOmegaEntry;
+  private GenericEntry measOmegaEntry;
+  private GenericEntry errOmegaEntry;
 
   private java.io.File logFile;
   private PrintWriter fileLogger;
@@ -76,9 +77,9 @@ public class SwerveSubsystem extends SubsystemBase
           this::getPose,
           this::resetOdometry,
           this::getRobotVelocity,
-          (speeds, feedforwards) -> swerveDrive.setChassisSpeeds(speeds),
+          (speeds, feedforwards) -> setChassisSpeeds(speeds),
           new PPHolonomicDriveController(
-          new PIDConstants(1, 0, 0),
+          new PIDConstants(7, 4, 0),
           new PIDConstants(5, 0, 0)),
           config,
           () -> {
@@ -177,6 +178,12 @@ public class SwerveSubsystem extends SubsystemBase
       swerveDrive.resetOdometry(initialHolomicPose);
     }
 
+    public void setChassisSpeeds(ChassisSpeeds velocity)
+    {
+      lastSetpoint = velocity;
+      swerveDrive.setChassisSpeeds(velocity);
+    }
+
     public void driveFieldOriented(ChassisSpeeds velocity)
     {
       // store the commanded setpoint so we can visualize it against measured velocity
@@ -248,6 +255,7 @@ public class SwerveSubsystem extends SubsystemBase
 
   public Command driveFieldOrientedCommand(Supplier<ChassisSpeeds> velocity) {
     return this.run(() -> {
+      lastSetpoint = velocity.get();
       swerveDrive.driveFieldOriented(velocity.get());
     });
   }
