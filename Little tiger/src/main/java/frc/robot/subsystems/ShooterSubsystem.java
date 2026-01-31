@@ -1,114 +1,79 @@
 package frc.robot.subsystems;
+
 import java.util.function.DoubleSupplier;
-import static edu.wpi.first.wpilibj2.command.Commands.parallel;
-import static edu.wpi.first.wpilibj2.command.Commands.waitUntil;
-import edu.wpi.first.wpilibj.Encoder;
-import com.revrobotics.spark.SparkMax;
-import com.revrobotics.spark.SparkLowLevel.MotorType;
-import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.math.controller.SimpleMotorFeedforward;
+
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
-public class ShooterSubsystem extends SubsystemBase
-{
-    private SparkMax Shootermotor = new SparkMax (10, MotorType.kBrushless);
-    // Shooter sensors and controllers
-    private final Encoder m_shooterEncoder =
-        new Encoder(
-            ShooterConstants.kEncoderPorts[0],
-            ShooterConstants.kEncoderPorts[1],
-            ShooterConstants.kEncoderReversed);
+import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.SparkLowLevel.MotorType;
 
-    private final SimpleMotorFeedforward m_shooterFeedforward =
-        new SimpleMotorFeedforward(0.0, 0.0);
+import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 
-    private final PIDController m_ShooterFeedback =
-        new PIDController(0.0, 0.0, 0.0);
-    private SparkMax elevatorMotor = new SparkMax (ElevatorSubsystemConstants.kelevatorMotorCanId, MotorType.kBrushless);
-    private RelativeEncoder elevatorEncoder = elevatorMotor.getEncoder();
-    private final SparkMaxConfig elevatorConfig = new SparkMaxConfig();
-    private SparkMax winchMotor = new SparkMax (winch.kwinchMotorCanId, MotorType.kBrushed);
+/**
+ * Shooter subsystem: encoder, PID feedback, feedforward, and NetworkTables telemetry.
+ * PID and feedforward are initialized to 0.0 (tunable later in Constants or NetworkTables).
+ */
+public class ShooterSubsystem extends SubsystemBase {
 
-//PID variables for manual PID
-    private final double kP = 0.2;
-    private final double kI = 0;
-    private final double kD = 0.08;
-    private final double kfeedforward = 0.003;
+  private final SparkMax m_shooterMotor = new SparkMax(10, MotorType.kBrushless);
+  private final Encoder m_shooterEncoder = new Encoder(0, 1, false);
 
-    //PID controller
-    private final PIDController pid = new PIDController(kP, kI, kD);
-    
-    ElevatorFeedforward feedforward = new ElevatorFeedforward(ElevatorSubsystemConstants.kS, 
-    ElevatorSubsystemConstants.kG,
-    ElevatorSubsystemConstants.kV,
-    ElevatorSubsystemConstants.kA
-  );
-        // NetworkTables telemetry: encoder RPM and desired setpoint (RPS)
+  // Feedforward and PID (start at 0.0 per request)
+  private final SimpleMotorFeedforward m_shooterFeedforward = new SimpleMotorFeedforward(0.0, 0.0);
+  private final PIDController m_shooterPID = new PIDController(0.0, 0.0, 0.0);
 
-    private double m_setpointRPS = 0.0;
-    private final NetworkTable m_nt = NetworkTableInstance.getDefault().getTable("Shooter");
-    private final NetworkTableEntry m_rpmEntry = m_nt.getEntry("rpmRPS");
-    private final NetworkTableEntry m_setpointEntry = m_nt.getEntry("setpointRPS");
-    // NetworkTables telemetry: encoder RPM and desired setpoint (RPS)
-    
-    public ShooterSubsystem()
-    {
-    m_ShooterFeedback.setTolerance(ShooterConstants.kShooterToleranceRPS);
-    m_shooterEncoder.setDistancePerPulse(ShooterConstants.kEncoderDistancePerPulse);
+  // NetworkTables telemetry
+  private double m_setpointRPS = 0.0;
+  private final NetworkTable m_nt = NetworkTableInstance.getDefault().getTable("Shooter");
+  private final NetworkTableEntry m_rpmEntry = m_nt.getEntry("rpmRPS");
+  private final NetworkTableEntry m_setpointEntry = m_nt.getEntry("setpointRPS");
 
-        // initialize NetworkTables values
+  public ShooterSubsystem() {
+    // sensible defaults so code compiles even without external Constants
+    m_shooterEncoder.setDistancePerPulse(1.0);
+    m_shooterPID.setTolerance(0.0);
 
+    // initialize NetworkTables
     m_rpmEntry.setDouble(0.0);
     m_setpointEntry.setDouble(0.0);
-    
-        // Set default command to turn off both the shooter and feeder motors, and then idle
 
-    setDefaultCommand(
-        runOnce(() -> {
-            m_Shootermotor.disable();
-            m_feederMotor.disable();
-        }) 
-          .andThen(run(() -> {}))
-          .withName("Idle"));
+    // default command: disable motor (idle)
+    setDefaultCommand(Commands.runOnce(() -> m_shooterMotor.disable()).andThen(Commands.run(() -> {})).withName("ShooterIdle"));
   }
-    
+
   /**
-   * Returns a command to shoot the balls currently stored in the robot. Spins the shooter flywheel
-   * up to the specified setpoint, and then runs the feeder motor.
-   *
-   * @param setpointRotationsPerSecond The desired shooter velocity
+   * Command that runs the shooter to the provided setpoint (RPS). The command continuously
+   * applies feedforward + PID feedback to the motor. The parameter is a DoubleSupplier so
+   * callers can provide a constant or a dynamic source.
    */
+  public Command runShootCommand(DoubleSupplier setpointSupplier) {
+    return Commands.run(() -> {
+      double setpoint = setpointSupplier.getAsDouble();
+      double ff = m_shooterFeedforward.calculate(setpoint);
+      double pidOutput = m_shooterPID.calculate(m_shooterEncoder.getRate(), setpoint);
+      m_shooterMotor.set(ff + pidOutput);
+    }, this).withName("RunShooter");
+  }
 
-    public Command runShootCommand(DoubleSupplier power)
-    {   
-        run_parallel(
-            run(
-                () -> {
-                    m_ShooterMotor.set(m_shooterFeedforward.calculate(setpointRotationsPerSecond) +
-                    m_ShooterFeedback.calculate(m_shooterEncoder.getRate(), setpointRotationsPerSecond));
-                }
-        )
-        // Wait until the shooter has reached the setpoint, and then run the feeder
-            waitUntil(m_shooterFeedback::atSetpoint).andThen(() -> m_feederMotor.set(1)))
-        .withName("Shoot");
-        // return this.startEnd(() -> Shootermotor.set(power.getAsDouble()), () -> Shootermotor.set(0));
-    }
-        /** Set the desired shooter speed (rotations per second). */
+  /** Set the desired shooter speed (rotations per second) and publish to NetworkTables. */
+  public void setSetpointRPS(double rps) {
+    m_setpointRPS = rps;
+    m_setpointEntry.setDouble(rps);
+  }
 
-    public void setSetpointRPS(double rps) {
-        m_setpointRPS = rps;
-        m_setpointEntry.setDouble(rps);
-    }
-    @Override
-    public void periodic() {
-        // publish current encoder rate (rotations per second) and current setpoint
-        double rpm = m_shooterEncoder.getRate();
-        m_rpmEntry.setDouble(rpm);
-        m_setpointEntry.setDouble(m_setpointRPS);
-    }
-
+  @Override
+  public void periodic() {
+    // publish encoder rate (rotations per second) and current setpoint
+    double rpm = m_shooterEncoder.getRate();
+    m_rpmEntry.setDouble(rpm);
+    m_setpointEntry.setDouble(m_setpointRPS);
+  }
 }
+
