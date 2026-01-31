@@ -15,6 +15,7 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 /**
  * Shooter subsystem: encoder, PID feedback, feedforward, and NetworkTables telemetry.
@@ -30,7 +31,7 @@ public class ShooterSubsystem extends SubsystemBase {
   private final PIDController m_shooterPID = new PIDController(0.0, 0.0, 0.0);
 
   // NetworkTables telemetry
-  private double m_setpointRPS = 0.0;
+  private double m_setpointRPS = 0.0; //Stores the current requested shooter setpoint in rotations per second.
   private final NetworkTable m_nt = NetworkTableInstance.getDefault().getTable("Shooter");
   private final NetworkTableEntry m_rpmEntry = m_nt.getEntry("rpmRPS");
   private final NetworkTableEntry m_setpointEntry = m_nt.getEntry("setpointRPS");
@@ -74,6 +75,9 @@ public class ShooterSubsystem extends SubsystemBase {
     double rpm = m_shooterEncoder.getRate();
     m_rpmEntry.setDouble(rpm);
     m_setpointEntry.setDouble(m_setpointRPS);
+    // Also publish to SmartDashboard for easy graphing
+    SmartDashboard.putNumber("Shooter/rpmRPS", rpm);
+    SmartDashboard.putNumber("Shooter/setpointRPS", m_setpointRPS);
   }
 }
 
