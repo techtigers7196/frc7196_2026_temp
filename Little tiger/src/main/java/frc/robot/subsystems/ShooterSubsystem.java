@@ -6,6 +6,7 @@ import edu.wpi.first.wpilibj.Encoder;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.examples.rapidreactcommandbot.Constants.ShooterConstants;
 import edu.wpi.first.networktables.NetworkTable;
@@ -22,12 +23,20 @@ public class ShooterSubsystem extends SubsystemBase
             ShooterConstants.kEncoderPorts[0], 
             ShooterConstants.kEncoderPorts[1],
             ShooterConstants.kEncoderReversed);
-    
+    // write your feedforward values here in the m_shooterFeedforward
+
+   // ShooterConstants.kSVolts represents the static gain (𝑘𝑆) for the shooter motor feedforward in volts
+
+    // kVVoltSecondsPerRotation meaning : volts to maintain 1 rotation per second
     private final SimpleMotorFeedforward m_shooterFeedforward =
         new SimpleMotorFeedforward(
-            ShooterConstants.kSVolts,
-            ShooterConstants.kVVoltSecondsPerRotation);
-    
+           0.05,
+            0.12);
+        // new SimpleMotorFeedforward(
+        //     ShooterConstants.kSVolts,
+        //     ShooterConstants.kVVoltSecondsPerRotation);
+        
+    // Write your PID values here in the Shooter_feedback
     private final PIDController m_ShooterFeedback =
         new PIDController(
             ShooterConstants.kP,
