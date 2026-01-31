@@ -48,6 +48,10 @@ public class SwerveSubsystem extends SubsystemBase
   private GenericEntry measOmegaEntry;
   private GenericEntry errOmegaEntry;
 
+  private GenericEntry poseXEntry;
+  private GenericEntry poseYEntry;
+  private GenericEntry poseRotEntry;
+
   private java.io.File logFile;
   private PrintWriter fileLogger;
 
@@ -79,7 +83,7 @@ public class SwerveSubsystem extends SubsystemBase
           this::getRobotVelocity,
           (speeds, feedforwards) -> setChassisSpeeds(speeds),
           new PPHolonomicDriveController(
-          new PIDConstants(7, 4, 0),
+          new PIDConstants(5, 0, 0 ),
           new PIDConstants(5, 0, 0)),
           config,
           () -> {
@@ -103,9 +107,15 @@ public class SwerveSubsystem extends SubsystemBase
             measOmegaEntry = pidTab.add("Measured Omega (rad/s)", 0.0).getEntry();
             errOmegaEntry = pidTab.add("Error Omega (rad/s)", 0.0).getEntry();
 
+            poseXEntry = pidTab.add("Pose X (m)", 0.0).getEntry();
+            poseYEntry = pidTab.add("Pose y (m)", 0.0).getEntry();
+            poseRotEntry = pidTab.add("Rotation (deg)", 0.0).getEntry();
+
+            
+
             // Initialize CSV file logger (appends to file in working directory)
             try {
-              logFile = new File("swerve_pose_log.csv");
+              logFile = new File("C:\\Users\\aoate\\Documents\\GitHub\\frc7196_2025\\swerve_pose_log.csv");
               boolean writeHeader = !logFile.exists() || logFile.length() == 0;
               fileLogger = new PrintWriter(new FileWriter(logFile, true), true);
               if (writeHeader) {
@@ -136,6 +146,11 @@ public class SwerveSubsystem extends SubsystemBase
       if (errVxEntry != null) errVxEntry.setDouble(lastSetpoint.vxMetersPerSecond - measured.vxMetersPerSecond);
       if (errVyEntry != null) errVyEntry.setDouble(lastSetpoint.vyMetersPerSecond - measured.vyMetersPerSecond);
       if (errOmegaEntry != null) errOmegaEntry.setDouble(lastSetpoint.omegaRadiansPerSecond - measured.omegaRadiansPerSecond);
+
+      var pose = getPose();
+      if (poseXEntry != null) poseXEntry.setDouble(pose.getX());
+      if (poseYEntry != null) poseYEntry.setDouble(pose.getY());
+      if (poseRotEntry != null) poseRotEntry.setDouble(pose.getRotation().getDegrees());
 
       // optional CSV logging
       if (fileLogger != null) {

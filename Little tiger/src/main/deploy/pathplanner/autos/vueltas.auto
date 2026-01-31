@@ -29,6 +29,24 @@
               {
                 "type": "path",
                 "data": {
+                  "pathName": "vuelta2"
+                }
+              },
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "vuelta2"
+                }
+              },
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "vuelta2"
+                }
+              },
+              {
+                "type": "path",
+                "data": {
                   "pathName": "vuelta 3"
                 }
               }
