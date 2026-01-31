@@ -65,7 +65,9 @@ Command driveFielOrientedAngularVelocity = drivebase.driveFieldOrientedCommand(d
     driverXbox.b().onTrue(driveFielOrientedAngularVelocity);
     driverXbox.x().onTrue(driveFieldOrientedDirectAngle);
 
-    driverXbox.rightTrigger().whileTrue(shootersubsystem.runShootCommand(() -> driverXbox.getRightTriggerAxis()));
+    shootersubsystem.setDefaultCommand(shootersubsystem.runShootCommand(() -> driverXbox.getRightTriggerAxis()));
+
+    //driverXbox.rightTrigger().whileTrue(shootersubsystem.runShootCommand(() -> driverXbox.getRightTriggerAxis()));
 
 
   }

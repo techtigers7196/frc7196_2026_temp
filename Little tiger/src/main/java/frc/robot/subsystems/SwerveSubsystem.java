@@ -38,15 +38,15 @@ public class SwerveSubsystem extends SubsystemBase
     double maximumSpeed = Units.feetToMeters(7);
     SwerveDrive swerveDrive;
   // Telemetry entries for Shuffleboard
-  private NetworkTableEntry setpointVxEntry;
-  private NetworkTableEntry measVxEntry;
-  private NetworkTableEntry errVxEntry;
-  private NetworkTableEntry setpointVyEntry;
-  private NetworkTableEntry measVyEntry;
-  private NetworkTableEntry errVyEntry;
-  private NetworkTableEntry setpointOmegaEntry;
-  private NetworkTableEntry measOmegaEntry;
-  private NetworkTableEntry errOmegaEntry;
+  private GenericEntry setpointVxEntry;
+  private GenericEntry measVxEntry;
+  private GenericEntry errVxEntry;
+  private GenericEntry setpointVyEntry;
+  private GenericEntry measVyEntry;
+  private GenericEntry errVyEntry;
+  private GenericEntry setpointOmegaEntry;
+  private GenericEntry measOmegaEntry;
+  private GenericEntry errOmegaEntry;
 
   private java.io.File logFile;
   private PrintWriter fileLogger;
@@ -138,10 +138,10 @@ public class SwerveSubsystem extends SubsystemBase
       if (errVyEntry != null) errVyEntry.setDouble(lastSetpoint.vyMetersPerSecond - measured.vyMetersPerSecond);
       if (errOmegaEntry != null) errOmegaEntry.setDouble(lastSetpoint.omegaRadiansPerSecond - measured.omegaRadiansPerSecond);
 
-      var pose = getPose();
+      /*var pose = getPose();
       if (poseXEntry != null) poseXEntry.setDouble(pose.getX());
       if (poseYEntry != null) poseYEntry.setDouble(pose.getY());
-      if (poseRotEntry != null) poseRotEntry.setDouble(pose.getRotation().getDegrees());
+      if (poseRotEntry != null) poseRotEntry.setDouble(pose.getRotation().getDegrees());*/
 
       // optional CSV logging
       if (fileLogger != null) {
@@ -167,10 +167,10 @@ public class SwerveSubsystem extends SubsystemBase
       }
 
       // publish current odometry pose to Shuffleboard
-      var pose = getPose();
+      /*var pose = getPose();
       if (poseXEntry != null) poseXEntry.setDouble(pose.getX());
       if (poseYEntry != null) poseYEntry.setDouble(pose.getY());
-      if (poseRotEntry != null) poseRotEntry.setDouble(pose.getRotation().getDegrees());
+      if (poseRotEntry != null) poseRotEntry.setDouble(pose.getRotation().getDegrees());*/
     }
 
     /**
