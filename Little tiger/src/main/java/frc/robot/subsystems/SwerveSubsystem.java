@@ -26,6 +26,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import java.io.PrintWriter;
 import java.io.FileWriter;
@@ -46,9 +47,6 @@ public class SwerveSubsystem extends SubsystemBase
   private NetworkTableEntry setpointOmegaEntry;
   private NetworkTableEntry measOmegaEntry;
   private NetworkTableEntry errOmegaEntry;
-  private NetworkTableEntry poseXEntry;
-  private NetworkTableEntry poseYEntry;
-  private NetworkTableEntry poseRotEntry;
 
   private java.io.File logFile;
   private PrintWriter fileLogger;
@@ -80,9 +78,9 @@ public class SwerveSubsystem extends SubsystemBase
           this::getPose,
           this::resetOdometry,
           this::getRobotVelocity,
-          (speeds, feedforwards) -> swerveDrive.setChassisSpeeds(speeds),
+          (speeds, feedforwards) -> setChassisSpeeds(speeds),
           new PPHolonomicDriveController(
-          new PIDConstants(1, 0, 0),
+          new PIDConstants(5, 0, 0 ),
           new PIDConstants(5, 0, 0)),
           config,
           () -> {
@@ -105,13 +103,10 @@ public class SwerveSubsystem extends SubsystemBase
             setpointOmegaEntry = pidTab.add("Setpoint Omega (rad/s)", 0.0).getEntry();
             measOmegaEntry = pidTab.add("Measured Omega (rad/s)", 0.0).getEntry();
             errOmegaEntry = pidTab.add("Error Omega (rad/s)", 0.0).getEntry();
-            poseXEntry = pidTab.add("Pose X (m)", 0.0).getEntry();
-            poseYEntry = pidTab.add("Pose Y (m)", 0.0).getEntry();
-            poseRotEntry = pidTab.add("Pose Rot (deg)", 0.0).getEntry();
 
             // Initialize CSV file logger (appends to file in working directory)
             try {
-              logFile = new File("swerve_pose_log.csv");
+              logFile = new File("C:\\Users\\aoate\\Documents\\GitHub\\frc7196_2025\\swerve_pose_log.csv");
               boolean writeHeader = !logFile.exists() || logFile.length() == 0;
               fileLogger = new PrintWriter(new FileWriter(logFile, true), true);
               if (writeHeader) {
@@ -142,6 +137,11 @@ public class SwerveSubsystem extends SubsystemBase
       if (errVxEntry != null) errVxEntry.setDouble(lastSetpoint.vxMetersPerSecond - measured.vxMetersPerSecond);
       if (errVyEntry != null) errVyEntry.setDouble(lastSetpoint.vyMetersPerSecond - measured.vyMetersPerSecond);
       if (errOmegaEntry != null) errOmegaEntry.setDouble(lastSetpoint.omegaRadiansPerSecond - measured.omegaRadiansPerSecond);
+
+      var pose = getPose();
+      if (poseXEntry != null) poseXEntry.setDouble(pose.getX());
+      if (poseYEntry != null) poseYEntry.setDouble(pose.getY());
+      if (poseRotEntry != null) poseRotEntry.setDouble(pose.getRotation().getDegrees());
 
       // optional CSV logging
       if (fileLogger != null) {
@@ -188,6 +188,12 @@ public class SwerveSubsystem extends SubsystemBase
     public void resetOdometry(Pose2d initialHolomicPose)
     {
       swerveDrive.resetOdometry(initialHolomicPose);
+    }
+
+    public void setChassisSpeeds(ChassisSpeeds velocity)
+    {
+      lastSetpoint = velocity;
+      swerveDrive.setChassisSpeeds(velocity);
     }
 
     public void driveFieldOriented(ChassisSpeeds velocity)
@@ -261,6 +267,7 @@ public class SwerveSubsystem extends SubsystemBase
 
   public Command driveFieldOrientedCommand(Supplier<ChassisSpeeds> velocity) {
     return this.run(() -> {
+      lastSetpoint = velocity.get();
       swerveDrive.driveFieldOriented(velocity.get());
     });
   }
