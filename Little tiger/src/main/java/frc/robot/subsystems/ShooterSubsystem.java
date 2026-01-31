@@ -7,8 +7,6 @@ import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
-import edu.wpi.first.wpilibj.Encoder;
-import edu.wpi.first.wpilibj.examples.rapidreactcommandbot.Constants.ShooterConstants;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.networktables.NetworkTableInstance;
@@ -18,31 +16,37 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 public class ShooterSubsystem extends SubsystemBase
 {
     private SparkMax Shootermotor = new SparkMax (10, MotorType.kBrushless);
-    private final Encoder m_shooterEncoder = 
+    // Shooter sensors and controllers
+    private final Encoder m_shooterEncoder =
         new Encoder(
-            ShooterConstants.kEncoderPorts[0], 
+            ShooterConstants.kEncoderPorts[0],
             ShooterConstants.kEncoderPorts[1],
             ShooterConstants.kEncoderReversed);
-    // write your feedforward values here in the m_shooterFeedforward
 
-   // ShooterConstants.kSVolts represents the static gain (𝑘𝑆) for the shooter motor feedforward in volts
-
-    // kVVoltSecondsPerRotation meaning : volts to maintain 1 rotation per second
     private final SimpleMotorFeedforward m_shooterFeedforward =
-        new SimpleMotorFeedforward(
-           0.05,
-            0.12);
-        // new SimpleMotorFeedforward(
-        //     ShooterConstants.kSVolts,
-        //     ShooterConstants.kVVoltSecondsPerRotation);
-        
-    // Write your PID values here in the Shooter_feedback
+        new SimpleMotorFeedforward(0.0, 0.0);
+
     private final PIDController m_ShooterFeedback =
-        new PIDController(
-            ShooterConstants.kP,
-            ShooterConstants.kI,
-            ShooterConstants.kD);
+        new PIDController(0.0, 0.0, 0.0);
+    private SparkMax elevatorMotor = new SparkMax (ElevatorSubsystemConstants.kelevatorMotorCanId, MotorType.kBrushless);
+    private RelativeEncoder elevatorEncoder = elevatorMotor.getEncoder();
+    private final SparkMaxConfig elevatorConfig = new SparkMaxConfig();
+    private SparkMax winchMotor = new SparkMax (winch.kwinchMotorCanId, MotorType.kBrushed);
+
+//PID variables for manual PID
+    private final double kP = 0.2;
+    private final double kI = 0;
+    private final double kD = 0.08;
+    private final double kfeedforward = 0.003;
+
+    //PID controller
+    private final PIDController pid = new PIDController(kP, kI, kD);
     
+    ElevatorFeedforward feedforward = new ElevatorFeedforward(ElevatorSubsystemConstants.kS, 
+    ElevatorSubsystemConstants.kG,
+    ElevatorSubsystemConstants.kV,
+    ElevatorSubsystemConstants.kA
+  );
         // NetworkTables telemetry: encoder RPM and desired setpoint (RPS)
 
     private double m_setpointRPS = 0.0;
