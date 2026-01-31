@@ -27,14 +27,14 @@ public class ShooterSubsystem extends SubsystemBase {
   private final Encoder m_shooterEncoder = new Encoder(0, 1, false);
 
   // Feedforward and PID (start at 0.0 per request)
-  private final SimpleMotorFeedforward m_shooterFeedforward = new SimpleMotorFeedforward(0.0, 0.0);
-  private final PIDController m_shooterPID = new PIDController(0.0, 0.0, 0.0);
+  private final SimpleMotorFeedforward m_shooterFeedforward = new SimpleMotorFeedforward(0.003, 0.0);
+  private final PIDController m_shooterPID = new PIDController(0.2, 0.0, 0.08);
 
-  // NetworkTables telemetry
-  private double m_setpointRPS = 0.0; //Stores the current requested shooter setpoint in rotations per second.
+  // NetworkTables telemetry (units: RPM)
+  private double m_setpointRPM = 0.0; // Stores the current requested shooter setpoint in rotations per minute.
   private final NetworkTable m_nt = NetworkTableInstance.getDefault().getTable("Shooter");
-  private final NetworkTableEntry m_rpmEntry = m_nt.getEntry("rpmRPS");
-  private final NetworkTableEntry m_setpointEntry = m_nt.getEntry("setpointRPS");
+  private final NetworkTableEntry m_rpmEntry = m_nt.getEntry("rpmRPM");
+  private final NetworkTableEntry m_setpointEntry = m_nt.getEntry("setpointRPM");
 
   public ShooterSubsystem() {
     // sensible defaults so code compiles even without external Constants
@@ -56,28 +56,29 @@ public class ShooterSubsystem extends SubsystemBase {
    */
   public Command runShootCommand(DoubleSupplier setpointSupplier) {
     return Commands.run(() -> {
-      double setpoint = setpointSupplier.getAsDouble();
+      double setpoint = setpointSupplier.getAsDouble(); // expected in RPM
+      double currentRPM = m_shooterEncoder.getRate() * 60.0; // encoder.getRate() -> revolutions/sec; convert to RPM
       double ff = m_shooterFeedforward.calculate(setpoint);
-      double pidOutput = m_shooterPID.calculate(m_shooterEncoder.getRate(), setpoint);
+      double pidOutput = m_shooterPID.calculate(currentRPM, setpoint);
       m_shooterMotor.set(ff + pidOutput);
     }, this).withName("RunShooter");
   }
 
   /** Set the desired shooter speed (rotations per second) and publish to NetworkTables. */
-  public void setSetpointRPS(double rps) {
-    m_setpointRPS = rps;
-    m_setpointEntry.setDouble(rps);
+  public void setSetpointRPM(double rpm) {
+    m_setpointRPM = rpm;
+    m_setpointEntry.setDouble(rpm);
   }
 
   @Override
   public void periodic() {
-    // publish encoder rate (rotations per second) and current setpoint
-    double rpm = m_shooterEncoder.getRate();
+    // publish encoder rate (RPM) and current setpoint
+    double rpm = m_shooterEncoder.getRate() * 60.0; // convert rev/sec to RPM
     m_rpmEntry.setDouble(rpm);
-    m_setpointEntry.setDouble(m_setpointRPS);
+    m_setpointEntry.setDouble(m_setpointRPM);
     // Also publish to SmartDashboard for easy graphing
-    SmartDashboard.putNumber("Shooter/rpmRPS", rpm);
-    SmartDashboard.putNumber("Shooter/setpointRPS", m_setpointRPS);
+    SmartDashboard.putNumber("Shooter/rpmRPM", rpm);
+    SmartDashboard.putNumber("Shooter/setpointRPM", m_setpointRPM);
   }
 }
 
