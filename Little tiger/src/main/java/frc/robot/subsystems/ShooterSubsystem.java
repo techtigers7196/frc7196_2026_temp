@@ -22,24 +22,41 @@ public class ShooterSubsystem extends SubsystemBase
             ShooterConstants.kEncoderPorts[0], 
             ShooterConstants.kEncoderPorts[1],
             ShooterConstants.kEncoderReversed);
+    
     private final SimpleMotorFeedforward m_shooterFeedforward =
         new SimpleMotorFeedforward(
             ShooterConstants.kSVolts,
             ShooterConstants.kVVoltSecondsPerRotation);
+    
     private final PIDController m_ShooterFeedback =
         new PIDController(
             ShooterConstants.kP,
             ShooterConstants.kI,
             ShooterConstants.kD);
+    
+        // NetworkTables telemetry: encoder RPM and desired setpoint (RPS)
+
+    private double m_setpointRPS = 0.0;
+    private final NetworkTable m_nt = NetworkTableInstance.getDefault().getTable("Shooter");
+    private final NetworkTableEntry m_rpmEntry = m_nt.getEntry("rpmRPS");
+    private final NetworkTableEntry m_setpointEntry = m_nt.getEntry("setpointRPS");
+    // NetworkTables telemetry: encoder RPM and desired setpoint (RPS)
+    
     public ShooterSubsystem()
     {
     m_ShooterFeedback.setTolerance(ShooterConstants.kShooterToleranceRPS);
     m_shooterEncoder.setDistancePerPulse(ShooterConstants.kEncoderDistancePerPulse);
+
+        // initialize NetworkTables values
+
+    m_rpmEntry.setDouble(0.0);
+    m_setpointEntry.setDouble(0.0);
+    
         // Set default command to turn off both the shooter and feeder motors, and then idle
 
     setDefaultCommand(
         runOnce(() -> {
-            m_ShooterMotor.disable();
+            m_Shootermotor.disable();
             m_feederMotor.disable();
         }) 
           .andThen(run(() -> {}))
@@ -67,4 +84,18 @@ public class ShooterSubsystem extends SubsystemBase
         .withName("Shoot");
         // return this.startEnd(() -> Shootermotor.set(power.getAsDouble()), () -> Shootermotor.set(0));
     }
+        /** Set the desired shooter speed (rotations per second). */
+
+    public void setSetpointRPS(double rps) {
+        m_setpointRPS = rps;
+        m_setpointEntry.setDouble(rps);
+    }
+    @Override
+    public void periodic() {
+        // publish current encoder rate (rotations per second) and current setpoint
+        double rpm = m_shooterEncoder.getRate();
+        m_rpmEntry.setDouble(rpm);
+        m_setpointEntry.setDouble(m_setpointRPS);
+    }
+
 }
